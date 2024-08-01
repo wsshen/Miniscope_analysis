@@ -7,17 +7,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 from readTabTxtFile import *
 import re
-filePath = "/media/watson/UbuntuHDD/feng_Xin/Xin/Miniscope/4914202252023/06072023/12_52_03"
-
-miniscopeFile = filePath + os.sep + 'My_V4_Miniscope' + os.sep + 'timeStamps.csv'
-caTimeNum = 0
-caTimeFile = "stim"+str(caTimeNum)+".txt"
-caTime = readTabTxtFile(filePath+os.sep+caTimeFile, 'float')
+import pickle
 from scipy import optimize
 import copy
+from caiman.source_extraction.cnmf.cnmf import load_CNMF
+
+
+filePath = "/media/watson/UbuntuHDD/feng_Xin/Xin/Miniscope/5133307132023/reward_seeking/days_with_miniscope_recording/day26/15_18_15"
+miniscopeFile = filePath + os.sep + 'My_V4_Miniscope' + os.sep + 'timeStamps.csv'
+caTimeNum = 3
+caTimeFile = "stim"+str(caTimeNum)+".txt"
+caTime = readTabTxtFile(filePath+os.sep+caTimeFile, 'float')
+plotSavingFolder = 'Plots'
+if not os.path.exists(filePath + os.sep + plotSavingFolder):
+    os.mkdir(filePath + os.sep + plotSavingFolder)
+if not os.path.exists(filePath+os.sep+'cellTraces.txt'):
+    cnmf_save = load_CNMF(filePath + os.sep + 'output_rescaled_cnmf_save.hdf5')
+    cellTraces = cnmf_save.estimates.C
+    valid_idx = cnmf_save.estimates.idx_components
+    import csv
+
+    traces_sz = cellTraces.shape
+    with open(filePath + os.sep + "cellTraces.txt", 'w', newline="\n") as f:
+        f_writer = csv.writer(f, delimiter='\t')
+        for i in range(traces_sz[0]):
+            f_writer.writerow(cellTraces[i, :])
+    with open(filePath + os.sep + "validIdx.txt", 'w', newline="\n") as f:
+        f_writer = csv.writer(f, delimiter='\t')
+        f_writer.writerow(valid_idx)
 def segments_fit(X, Y, count, xanchors=slice(None), yanchors=slice(None)):
     xmin = X.min()
     xmax = X.max()
+    ymin = Y.min()
+    ymax = Y.max()
+
     seg = np.full(count - 1, (xmax - xmin) / count)
 
     px_init = np.r_[np.r_[xmin, seg].cumsum(), xmax]
@@ -36,7 +59,10 @@ def segments_fit(X, Y, count, xanchors=slice(None), yanchors=slice(None)):
         Y2 = np.interp(X, px, py)
         return np.mean((Y - Y2)**2)
 
-    r = optimize.minimize(err, x0=np.r_[seg, py_init], method='Nelder-Mead',bounds=((xmin,xmax),(xmin,xmax),(None,None),(None,None),(None,None),(None,None)))
+    r = optimize.minimize(err, x0=np.r_[seg, py_init], method='Nelder-Mead',bounds=((xmin,xmax),(xmin,xmax),(ymin,ymax),(ymin,ymax),(ymin,ymax),(ymin,ymax)))
+    while not r.success:
+        r = optimize.minimize(err, x0=r.x, method='Nelder-Mead', bounds=(
+        (xmin, xmax), (xmin, xmax), (ymin, ymax), (ymin, ymax), (ymin, ymax), (ymin, ymax)))
     return func(r.x)
 def returnCa2DataLengthFromFile(dataFile):
     caData = readTabTxtFile(dataFile, 'float')
@@ -49,6 +75,7 @@ for files in os.listdir(filePath):
         temp_len = returnCa2DataLengthFromFile(filePath + os.sep+ files)
         print('Length of data in ' + files + ' is:'+str(temp_len))
         totLen = totLen + temp_len
+
 with open(miniscopeFile, "r", newline="") as readFile:
     file_reader = csv.reader(readFile, delimiter=',')
     csvData = []
@@ -71,21 +98,38 @@ for i in reversed(abnormalInd):
     intervals_csv_copy.pop(i)
 # plt.subplot(2,1,2)
 # plt.plot(intervals_csv_copy)
-#
 # plt.show(block=True)
 
 intervals_caTime = [caTime[i+1] - caTime[i] for i in range(len(caTime)-1)]
 timePerFrame = np.mean(intervals_caTime)
+# timePerFrame = np.mean(intervals_csv)/1000
+plt.figure()
+plt.plot(intervals_caTime)
+plt.xlabel("Frame number")
+plt.ylabel("inter-frame interval (s)")
+plt.title('From recorded Ca2+ frame triggers')
+plt.savefig(filePath + os.sep + plotSavingFolder + os.sep + 'time_intervals_recorded_frameTime.eps', format='eps')
 
 predictedClock = [timePerFrame*1000*(i-1) for i in range(len(csvData))]
 sysClock = [int(csvData[i][1]) for i in range(len(csvData))]
 
-bbb = np.array([sysClock[i] - predictedClock[i] for i in range(len(sysClock))])
-aaa = np.array([i for i in range(len(sysClock)) ])
+interval_diff = np.array([sysClock[i] - predictedClock[i] for i in range(len(sysClock))])
+frame_number = np.array([i for i in range(len(sysClock)) ])
 
-fx,fy=segments_fit(aaa,bbb,3,yanchors=[1,1,3,3])
+fx,fy=segments_fit(frame_number,interval_diff,3,xanchors=[0,1,1,3])
 plt.figure()
-plt.plot(aaa,bbb)
+plt.plot(frame_number,interval_diff)
 plt.plot(fx,fy,'o')
-plt.show(block=True)
+plt.xlabel("Frame number")
+plt.ylabel("Diff between predicted clock and csv timestamps (ms)")
+plt.savefig(filePath + os.sep + plotSavingFolder + os.sep + 'segment_fit_frame_correction.eps', format='eps')
+
+# frame_correction_pos = [int(fx[2]), round((fy[2]-fy[1])/1000/timePerFrame)]
+frame_correction_pos = []
+with open(filePath + os.sep + 'frame_correction_pos'+'.pickle','wb') as f:
+    pickle.dump(frame_correction_pos,f)
+print(fx)
+print(fy)
+print(frame_correction_pos)
+
 input()

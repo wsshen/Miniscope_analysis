@@ -245,7 +245,7 @@ for i in range(len(valid_idx)):
     plt.savefig(dir+os.sep+plotSavingFolder+os.sep+str(valid_idx[i])+'.eps',format='eps')
     # plt.figure()
 
-#plt.show()
+#plt.show(block=True)
 
 print("done")
 input()

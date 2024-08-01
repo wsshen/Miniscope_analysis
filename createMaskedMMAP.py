@@ -107,6 +107,8 @@ print(params)
 blank_img = np.zeros(np.shape(first_image))
 circle = cv2.circle(blank_img, calc_center(params[0], params[1], params[2], params[3]), calc_radius(params[0], params[1], params[2], params[3]), (255, 0, 0), -1)
 circle=circle.astype(np.uint8)
+mask_save = IM.fromarray(circle)
+mask_save.save('mask.tif')
 for i in range(a):
     image = np.array(images[i,:,:])
 

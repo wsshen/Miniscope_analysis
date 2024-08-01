@@ -5,9 +5,10 @@ import numpy as np
 import math
 
 dir = "/media/watson/UbuntuHDD/feng_Xin/Xin/Miniscope/5133207132023/reward_seeking/days_with_miniscope_recording/day1_poke_lick/session1/14_29_23/My_V4_miniscope"
-videoName = 'output_0_51.avi'
+videoName = 'output_0_51_rescaled'
+suffix = '.avi'
 
-pathName = dir+os.sep+videoName
+pathName = dir+os.sep+videoName+suffix
 
 newFrames = []
 # for aviFile in glob.glob("*.avi"):
@@ -55,7 +56,7 @@ if hasFrame:
             break
     print(params)
 fourcc = cv2.VideoWriter_fourcc(*'FFV1')
-out = cv2.VideoWriter(dir+os.sep+'cropped_output.avi',fourcc,30,(int(params[2]-params[0]),int(params[3]-params[1])),isColor=False)
+out = cv2.VideoWriter(dir+os.sep+videoName+'_cropped'+suffix,fourcc,30,(int(params[2]-params[0]),int(params[3]-params[1])),isColor=False)
 # out = cv2.VideoWriter('cropped_output.avi',fourcc,30,(600,600),isColor=False)
 
 while hasFrame:

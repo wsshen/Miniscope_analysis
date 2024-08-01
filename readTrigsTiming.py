@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from readTabTxtFile import *
 import sys
-
-dir = tkinter.filedialog.askdirectory(initialdir="/media/watson/UbuntuHDD/feng_Xin/Xin/Miniscope/5133207132023/reward_seeking/days_with_miniscope_recording/day1_poke_lick/session1/14_29_23/My_V4_miniscope")
+import shutil
+import json
+dir = tkinter.filedialog.askdirectory(initialdir="/media/watson/UbuntuHDD/feng_Xin/Xin/Miniscope/5133307132023/reward_seeking/days_with_miniscope_recording/day26/15_18_15")
 
 def findClosestTimeIndex(t,tSeries):
     tDiff = abs(t-tSeries)
@@ -80,13 +81,22 @@ if daq_type == 'type2':
     fileName = "trigger_all_data.txt"
     stimData =[]
     with open(dir+os.sep+fileName, "r", newline="") as readFile:
-        file_reader = csv.reader(readFile, delimiter='\t')
+        file_reader = csv.reader(readFile, delimiter=' ') #delimiter = '\t'
         for entry in file_reader:
             stimData.append(entry)
-    edgeDetectList = []
-    risingEdgeDetect = [7, 2, 6, 5, 4, 3, 1, 0]
+    edgeDetectList = [4]
+    risingEdgeDetect = [0, 1, 2, 3, 6, 5, 7]
     fallingEdgeDetect = []
 
+    trig_dict = {'poke':[0,0], # trigger name: [original channel, new channel]
+                 'pump':[2,1],
+                 'lick':[3,2],
+                 'miniscope':[4,3],
+
+                 }
+    index_trig_dict =dict(enumerate(trig_dict.keys()))
+    with open(dir + os.sep + "trig_channel_transformed.txt", "w") as writeFile:
+        writeFile.write(json.dumps(trig_dict))
     trigTime = []
 
     samplingRate = 1e4
@@ -112,4 +122,11 @@ if daq_type == 'type2':
             trig_time_str += str(ii) + '\t'
         with open(dir + os.sep + "raw_stim_" + str(index) + ".txt", "w") as writeFile:
             writeFile.write(trig_time_str)
+
+    for index in range(len(index_trig_dict)):
+        channel_pair = trig_dict[index_trig_dict[index]]
+        old_channel = channel_pair[0]
+        new_channel = channel_pair[1]
+        shutil.copy(dir + os.sep + "raw_stim_" + str(old_channel) + ".txt",
+                    dir + os.sep + "stim" + str(new_channel) + ".txt")
 
